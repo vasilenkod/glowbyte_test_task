@@ -25,14 +25,32 @@ public class DataBaseTask {
 
 
     public void solveTask() throws SQLException {
-//        dropTables();
+        //dropTables();
         createTables();
-        insertDataIntoTables();
-        processData();
+
+//        String firstTableQuery =
+//                "INSERT INTO TABLE_LIST (TABLE_NAME, PK) " +
+//                "VALUES " +
+//                "('users', 'ID'), " +
+//                "('accounts', 'account, account_id');";
+//        String secondTableQuery =
+//                "INSERT INTO TABLE_COLS (TABLE_NAME, COLUMN_NAME, COLUMN_TYPE) " +
+//                "VALUES " +
+//                "('users', 'first_name', 'VARCHAR(32)'), " +
+//                "('users', 'second_name', 'VARCHAR(32)'), " +
+//                "('users', 'id', 'INT'), " +
+//                "('accounts', 'register_date', 'TIMESTAMP'), " +
+//                "('accounts', 'CARD_NUMBER', 'INT'), " +
+//                "('accounts', 'ACCOUNT', 'VARCHAR(32)'), " +
+//                "('accounts', 'ACCOUNT_ID', 'INT');";
+//
+//        insertDataIntoTables(firstTableQuery, secondTableQuery);
+        List<String> answer = processData();
+        writeIntoFile(answer);
     }
 
 
-    private void dropTables() throws SQLException {
+    public void dropTables() throws SQLException {
 
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
@@ -44,15 +62,15 @@ public class DataBaseTask {
         }
     }
 
-    private void createTables() throws SQLException {
+    public void createTables() throws SQLException {
 
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
 
             String createTableQuery =
                     "CREATE TABLE IF NOT EXISTS TABLE_LIST (" +
-                            "TABLE_NAME VARCHAR(32), " +
-                            "PK VARCHAR(256));";
+                        "TABLE_NAME VARCHAR(32), " +
+                        "PK VARCHAR(256));";;
             statement.execute(createTableQuery);
 
             createTableQuery =
@@ -64,34 +82,17 @@ public class DataBaseTask {
         }
     }
 
-    private void insertDataIntoTables() throws SQLException {
+    public void insertDataIntoTables(String firstTableQuery, String secondTableQuery) throws SQLException {
 
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
 
-            String insertDataQuery =
-                    "INSERT INTO TABLE_LIST (TABLE_NAME, PK) " +
-                            "VALUES " +
-                            "('users', 'ID'), " +
-                            "('accounts', 'account, account_id');";
-            statement.executeUpdate(insertDataQuery);
-
-            insertDataQuery =
-                    "INSERT INTO TABLE_COLS (TABLE_NAME, COLUMN_NAME, COLUMN_TYPE) " +
-                            "VALUES " +
-                            "('users', 'first_name', 'VARCHAR(32)'), " +
-                            "('users', 'second_name', 'VARCHAR(32)'), " +
-                            "('users', 'id', 'INT'), " +
-                            "('users', 'ID', 'VARCHAR(32)'), " +
-                            "('accounts', 'register_date', 'TIMESTAMP'), " +
-                            "('accounts', 'CARD_NUMBER', 'INT'), " +
-                            "('accounts', 'ACCOUNT', 'VARCHAR(32)'), " +
-                            "('accounts', 'ACCOUNT_ID', 'INT');";
-            statement.executeUpdate(insertDataQuery);
+            statement.executeUpdate(firstTableQuery);
+            statement.executeUpdate(secondTableQuery);
         }
     }
 
-    private void processData() throws SQLException {
+    public List<String> processData() throws SQLException {
 
         //список для записи ответа
         List<String> data = new ArrayList<>();
@@ -134,16 +135,16 @@ public class DataBaseTask {
                         String line = name + ", " + key + ", " + columnType;
                         data.add(line);
                     } else {
-                        throw new IllegalStateException("В TABLE_COLS не нашлось столбца, соответствующего PK в TABLE_NAME");
+                        throw new SQLDataException("В TABLE_COLS не нашлось столбца, соответствующего PK в TABLE_NAME");
                     }
                 }
             }
         }
 
-        writeIntoFile(data);
+        return data;
     }
 
-    private static void writeIntoFile(List<String> lines) {
+    public static void writeIntoFile(List<String> lines) {
         try(var fos = new FileWriter("src/main/java/test/task/vasilenko/output.txt")) {
             for (var line : lines) {
                 fos.write(line + "\n");
@@ -153,7 +154,7 @@ public class DataBaseTask {
         }
     }
 
-    private Map<String, String> readProperties() {
+    public Map<String, String> readProperties() {
         Properties property = new Properties();
 
         try (var fis = new FileInputStream("src/main/resources/database.properties")) {
