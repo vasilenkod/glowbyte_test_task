@@ -2,10 +2,7 @@ package test.task.vasilenko;
 
 import org.h2.jdbcx.JdbcDataSource;
 import java.io.*;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
 
 public class DataBaseTask {
@@ -85,6 +82,7 @@ public class DataBaseTask {
                             "('users', 'first_name', 'VARCHAR(32)'), " +
                             "('users', 'second_name', 'VARCHAR(32)'), " +
                             "('users', 'id', 'INT'), " +
+                            "('users', 'ID', 'VARCHAR(32)'), " +
                             "('accounts', 'register_date', 'TIMESTAMP'), " +
                             "('accounts', 'CARD_NUMBER', 'INT'), " +
                             "('accounts', 'ACCOUNT', 'VARCHAR(32)'), " +
@@ -94,11 +92,19 @@ public class DataBaseTask {
     }
 
     private void processData() throws SQLException {
+
+        //список для записи ответа
         List<String> data = new ArrayList<>();
+
+        //подготовленный запрос для поиска во второй таблице
+        String preparedQuery =
+                "SELECT COLUMN_TYPE " +
+                "FROM TABLE_COLS " +
+                "WHERE TABLE_NAME = ? AND COLUMN_NAME = ? OR COLUMN_NAME = ?;";
 
         try(Connection connection = dataSource.getConnection();
             Statement statement = connection.createStatement();
-            Statement innerStatement = connection.createStatement()) {
+            PreparedStatement innerStatement = connection.prepareStatement(preparedQuery)) {
 
             String selectQueryFromTableList = "SELECT * FROM TABLE_LIST";
             ResultSet tableListData = statement.executeQuery(selectQueryFromTableList);
@@ -111,21 +117,24 @@ public class DataBaseTask {
 
                 //проходим по каждому первичному ключу
                 for (var key : keys) {
+
+                    //проверяем с учетом регистра
                     String pkLower = key.toLowerCase();
                     String pkUpper = key.toUpperCase();
 
-                    //проверяем с учетом регистра
-                    String selectQueryFromTableCols =
-                            "SELECT COLUMN_TYPE " +
-                                    "FROM TABLE_COLS " +
-                                    "WHERE TABLE_NAME = " + "'" + name + "'" + " AND " +
-                                    "COLUMN_NAME = " + "'" + pkLower + "'" + " OR COLUMN_NAME = " + "'" + pkUpper + "'" + ";";
+                    innerStatement.setString(1, name);
+                    innerStatement.setString(2, pkLower);
+                    innerStatement.setString(3, pkUpper);
 
-                    ResultSet tableColsData = innerStatement.executeQuery(selectQueryFromTableCols);
-                    while (tableColsData.next()) {
+                    ResultSet tableColsData = innerStatement.executeQuery();
+
+                    // обрабатываем запрос по второй таблице
+                    if (tableColsData.next()) {
                         String columnType = tableColsData.getString("COLUMN_TYPE");
                         String line = name + ", " + key + ", " + columnType;
                         data.add(line);
+                    } else {
+                        throw new IllegalStateException("В TABLE_COLS не нашлось столбца, соответствующего PK в TABLE_NAME");
                     }
                 }
             }
